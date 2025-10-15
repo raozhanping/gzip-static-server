@@ -3,7 +3,7 @@ import fs from 'fs';
 import { ServerConfig } from '../types';
 
 export const defaultConfig: ServerConfig = {
-  port: 3000,
+  port: 4000,
   host: '0.0.0.0',
   rootDir: './public',
   gzip: true,
