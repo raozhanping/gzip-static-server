@@ -19,11 +19,22 @@
     "static-server",
     "gzip",
     "compression",
-    "development",
-    "local-server"
+    "local-server",
+    "nodejs",
+    "cli",
+    "file-server",
+    "web-server"
   ],
-  "author": "raozhanping <raozhanping@163.com>",
+  "author": "raozhanping <raozhanping@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/raozhanping/gzip-static-server#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raozhanping/gzip-static-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/raozhanping/gzip-static-server/issues"
+  },
   "dependencies": {
     "mime-types": "^2.1.35",
     "chokidar": "^3.5.3",
