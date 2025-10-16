@@ -178,6 +178,148 @@
             color: #2e7d32;
         }
 
+        .upload-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: #f1f8e9;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0 20px 0;
+        }
+
+        .upload-progress {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #2196F3);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .files-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .files-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+
+        .file-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-details {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .file-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-size {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .compression-badge {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-style: italic;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -253,12 +395,43 @@
             </div>
         </div>
 
+        <div class="upload-section">
+            <h3>📁 文件上传</h3>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-content">
+                    <div class="upload-icon">📤</div>
+                    <p class="upload-text">拖拽文件到此处或点击选择文件</p>
+                    <p class="upload-hint">支持多文件上传，自动生成gzip压缩版本</p>
+                    <input type="file" id="fileInput" multiple style="display: none;">
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        选择文件
+                    </button>
+                </div>
+            </div>
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">上传中...</p>
+            </div>
+        </div>
+
+        <div class="files-section">
+            <h3>📋 已上传文件</h3>
+            <div class="files-list" id="filesList">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+
         <div class="buttons">
             <a href="#" class="btn btn-primary" onclick="checkCompression()">
                 📊 检查压缩状态
             </a>
             <a href="#" class="btn btn-secondary" onclick="showHeaders()">
                 🔍 查看响应头
+            </a>
+            <a href="#" class="btn btn-secondary" onclick="refreshFiles()">
+                🔄 刷新文件列表
             </a>
         </div>
 
@@ -282,7 +455,160 @@
 
             // 检查压缩状态
             checkCompression();
+
+            // 加载文件列表
+            refreshFiles();
+
+            // 设置上传事件监听
+            setupUploadEvents();
         });
+
+        function setupUploadEvents() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // 文件选择事件
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    uploadFiles(e.target.files);
+                }
+            });
+
+            // 拖拽事件
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+
+                if (e.dataTransfer.files.length > 0) {
+                    uploadFiles(e.dataTransfer.files);
+                }
+            });
+
+            // 点击上传区域触发文件选择
+            uploadArea.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'BUTTON') {
+                    fileInput.click();
+                }
+            });
+        }
+
+        async function uploadFiles(files) {
+            const uploadProgress = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            uploadProgress.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.textContent = '准备上传...';
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            try {
+                const xhr = new XMLHttpRequest();
+
+                // 上传进度
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressFill.style.width = percentComplete + '%';
+                        progressText.textContent = `上传中... ${Math.round(percentComplete)}%`;
+                    }
+                });
+
+                // 完成事件
+                xhr.addEventListener('load', function() {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            progressText.textContent = response.message;
+                            setTimeout(() => {
+                                uploadProgress.style.display = 'none';
+                                refreshFiles();
+                            }, 2000);
+                        } else {
+                            progressText.textContent = '上传失败: ' + response.message;
+                            progressFill.style.background = '#f44336';
+                        }
+                    } else {
+                        progressText.textContent = '上传失败';
+                        progressFill.style.background = '#f44336';
+                    }
+                });
+
+                // 错误事件
+                xhr.addEventListener('error', function() {
+                    progressText.textContent = '上传失败';
+                    progressFill.style.background = '#f44336';
+                });
+
+                xhr.open('POST', '/api/upload');
+                xhr.send(formData);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                progressText.textContent = '上传失败';
+                progressFill.style.background = '#f44336';
+            }
+        }
+
+        async function refreshFiles() {
+            const filesList = document.getElementById('filesList');
+            filesList.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+
+                if (data.files && data.files.length > 0) {
+                    filesList.innerHTML = data.files.map(file => `
+                        <div class="file-item">
+                            <div class="file-info">
+                                <div class="file-name">${file.originalName}</div>
+                                <div class="file-details">
+                                    上传时间: ${new Date(file.uploadTime).toLocaleString()}
+                                    ${file.compressionRatio > 0 ? `| 压缩率: ${file.compressionRatio}%` : ''}
+                                </div>
+                            </div>
+                            <div class="file-stats">
+                                <div class="file-size">${formatFileSize(file.size)}</div>
+                                ${file.compressionRatio > 0 ?
+                                    `<div class="compression-badge">
+                                        🗜️ ${formatFileSize(file.gzipSize)} (${file.compressionRatio}%)
+                                    </div>` :
+                                    ''
+                                }
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    filesList.innerHTML = '<div class="empty-state">暂无上传文件</div>';
+                }
+            } catch (error) {
+                console.error('Error loading files:', error);
+                filesList.innerHTML = '<div class="empty-state">加载文件列表失败</div>';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
 
         function checkCompression() {
             fetch(window.location.href)

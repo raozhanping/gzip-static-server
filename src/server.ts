@@ -1,6 +1,7 @@
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
 import { ServerConfig, Logger, ServerStats, RequestHandler } from './types';
 import { StaticFileHandler } from './handlers/static';
+import { UploadHandler } from './handlers/upload';
 import { FileWatcher } from './utils/watcher';
 import { createLogger } from './utils/logger';
 
@@ -9,6 +10,7 @@ export class GzipStaticServer {
   private config: ServerConfig;
   private logger: Logger;
   private fileHandler: StaticFileHandler;
+  private uploadHandler: UploadHandler;
   private fileWatcher: FileWatcher | null = null;
   private stats: ServerStats;
   private middleware: RequestHandler[] = [];
@@ -21,6 +23,10 @@ export class GzipStaticServer {
       100 * 1024 * 1024, // 100MB cache
       config.indexPath
     );
+
+    // 创建上传目录和处理器
+    const uploadDir = config.uploadDir || './uploads';
+    this.uploadHandler = new UploadHandler(uploadDir, this.logger);
 
     this.stats = {
       requests: 0,
@@ -58,6 +64,50 @@ export class GzipStaticServer {
     this.middleware.push(handler);
   }
 
+  private async handleApiRequest(req: IncomingMessage, res: ServerResponse, pathname: string): Promise<void> {
+    try {
+      // 设置CORS头部
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
+
+      switch (pathname) {
+        case '/api/upload':
+          if (req.method === 'POST') {
+            await this.uploadHandler.handleUpload(req, res);
+          } else {
+            res.writeHead(405, { 'Allow': 'POST, OPTIONS' });
+            res.end('Method Not Allowed');
+          }
+          break;
+
+        case '/api/files':
+          if (req.method === 'GET') {
+            await this.uploadHandler.handleFileList(req, res);
+          } else {
+            res.writeHead(405, { 'Allow': 'GET, OPTIONS' });
+            res.end('Method Not Allowed');
+          }
+          break;
+
+        default:
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'API endpoint not found' }));
+          break;
+      }
+    } catch (error) {
+      this.logger.error('API request error:', error as Error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+  }
+
   private setupCors(req: IncomingMessage, res: ServerResponse): void {
     if (!this.config.cors) return;
 
@@ -91,6 +141,16 @@ export class GzipStaticServer {
       // 执行中间件
       for (const middleware of this.middleware) {
         await middleware(req, res);
+      }
+
+      // 解析URL路径
+      const url = new URL(req.url || '/', `http://${req.headers.host}`);
+      const pathname = url.pathname;
+
+      // 处理API路由
+      if (pathname.startsWith('/api/')) {
+        await this.handleApiRequest(req, res, pathname);
+        return;
       }
 
       // 处理静态文件

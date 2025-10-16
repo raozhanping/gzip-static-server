@@ -4,6 +4,7 @@ export interface ServerConfig {
   port: number;
   host: string;
   rootDir: string;
+  uploadDir?: string;
   gzip: boolean;
   gzipLevel: number;
   gzipThreshold: number;
