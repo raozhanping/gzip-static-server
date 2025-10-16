@@ -1,6 +1,6 @@
 {
   "name": "gzip-static-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight Gzip-enabled static file server for local development",
   "main": "dist/server.js",
   "bin": {
